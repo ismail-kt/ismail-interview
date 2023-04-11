@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\Task;
-
+use Illuminate\Support\Facades\Mail;
 use DateTime;
 use Carbon\Carbon;
 
@@ -128,6 +128,12 @@ class HomeController extends Controller
         $task->employee_id = $request->employee_id;
         $task->status = $request->status;
         $task->save();
+
+        try {
+            $this->sendEmail('admin@otaskit.com', 'task is added', 'hello there, new task is added','hello@otaskit.com', 'otaskit.com');
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
         // return redirect(route('task.show'));
         session()->flash('success', 'created new task successfully!');
         return redirect()->route('task.show');
@@ -174,8 +180,16 @@ class HomeController extends Controller
             $task->started = NULL;
             if ($request->employee_id) {
                 $task->status = 'assigned';
+                $task->save();
+
+                $assigneeEmail = $task->employee->email;
+
+                try {
+                    $this->sendEmail($assigneeEmail, 'task is added', 'hello there, new task is added','hello@otaskit.com', 'otaskit.com');
+                } catch (\Throwable $th) {
+                    //throw $th;
+                }
             }
-            $task->save();
         }else{
             $error = "can't update tasks with inprogress status";
             session()->flash('error', 'Validation error occurred!');
@@ -221,6 +235,21 @@ class HomeController extends Controller
         // return redirect(route('task.show'));
         session()->flash('success', 'updated task status successfully!');
         return redirect()->route('task.show');   
+    }
+
+    function sendEmail($to, $subject, $body, $from, $name) {
+        Mail::send([], [], function ($message) use ($to, $subject, $body) {
+            $message->to($to);
+            $message->subject($subject);
+            $message->setBody($body, 'text/html');
+            $message->from('your_email@example.com', 'Your Name');
+            $message->sender('your_email@example.com', 'Your Name');
+            $message->replyTo('your_email@example.com', 'Your Name');
+    
+            $message->getSwiftMessage()
+                ->getHeaders()
+                ->addTextHeader('X-Mailer', 'Laravel Mailer');
+        });
     }
 
 
