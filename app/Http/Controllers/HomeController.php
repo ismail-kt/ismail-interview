@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\employee;
-use App\Models\task;
+use App\Models\Employee;
+use App\Models\Task;
+
+use DateTime;
+use Carbon\Carbon;
 
 
 class HomeController extends Controller
@@ -24,159 +27,201 @@ class HomeController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
-    public function index()
+    public function index($id='')
     {
-        return view('home');
+        $employees = Employee::all();
+        if ($id) {
+            $employeeEdit = Employee::find($id);
+            return view('home')->with('employees', $employees)->with('employeeEdit', $employeeEdit);
+        }
+
+        return view('home')->with('employees', $employees);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users|max:255',
+            'name' => 'required',
+            'email' => 'required|email|unique:employees',
             'department' => 'required',
-            'mobile' => 'required|number|max:10',
             'status' => 'required',
+            'mobile' => 'required|numeric',
         ]);
+            
+            $employee = new Employee;
+            $employee->name = $request->name;
+            $employee->email = $request->email;
+            $employee->department = $request->department;
+            $employee->status = $request->status;
+            $employee->mobile = $request->mobile;
+            $employee->save();
 
-            $employee = new employee([
-            'name' => $request->input('name'),
-            'email' => $request->input('email'),
-            'department' => $request->input('department'),
-            'mobile' => $request->input('mobile'),
-            'status' => $request->input('status'),
-        ]);
-
-        $employee->save();
-
-        //return to view 
+        //return to view
+        session()->flash('success', 'created new employee successfully!');
+        return redirect()->route('home');
+        // return redirect(route('home')); 
     }
 
     public function editEmployee($id)
     {
-        $task = employee::find($id);
+        $task = Employee::find($id);
         //return employee data to edit view
     }
 
     public function updateEmployee(Request $request)
     {
+        // dd($request);
         $request->validate([
-            'id' =>'required',
-            'name' => 'required|string|max:255',
+            'id' => 'required',
+            'name' => 'required',
             'department' => 'required',
-            'mobile' => 'required|number|max:10',
             'status' => 'required',
+            'mobile' => 'required',
         ]);
 
-        $employee = employee::find($request->id);
-        $employee->name = $request->input('name');
-        $employee->department = $request->input('department');
-        $employee->mobile = $request->input('mobile');
-        $employee->status = $request->input('status');
+        $employee = Employee::find($request->id);
+        $employee->name = $request->name;
+        $employee->department = $request->department;
+        $employee->status = $request->status;
+        $employee->mobile = $request->mobile;
         $employee->save();
-
         //return to view 
+        // return redirect(route('home'));
+        session()->flash('success', 'updated successfully!');
+        return redirect()->route('home');
     }
 
-    public function viewEployees()
+    public function viewTasks(Request $request, $id='')
     {
-        // getting all employees
-        $employee = employee::all();
-        //result passing to view
+        // die('kkk');
+        $taskData = Task::query();
+        if ($request->employee) {
+            $taskData->where('employee_id',$request->employee);
+        }
+        if ($request->status) {
+            $taskData->where('status',$request->status);
+        }
+
+        $task = $taskData->get();
+        $employees = Employee::all();
+        if ($id) {
+            $taskEdit = Task::find($id);
+            $task = Task::all();
+            return view('task')->with('tasks', $task)->with('employees', $employees)->with('taskEdit', $taskEdit);
+        }
+        return view('task')->with('tasks', $task)->with('employees', $employees);
     }
+
 
     public function storeTasks(Request $request)
     {
         $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|email|unique:users|max:255',
-            // 'employee_id' => 'required|number',
+            'title' => 'required',
+            'description' => 'required',
+            // 'employee_id' => 'required',
             'status' => 'required',
         ]);
 
-            $task = new task([
-            'title' => $request->input('title'),
-            'description' => $request->input('description'),
-            'employee_id' => $request->input('employee_id'),
-            'status' => $request->input('status'),
-        ]);
-
+        $task = new Task;
+        $task->title = $request->title;
+        $task->description = $request->description;
+        $task->employee_id = $request->employee_id;
+        $task->status = $request->status;
         $task->save();
-       //return to view
-    } 
-
-    public function viewTasks()
-    {
-        // getting all employees
-        $employee = task::all();
-        // result passing to view
-    }
-
-    public function editTask($id)
-    {
-        $task = task::find($id);
-        //return task data to edit view
+        // return redirect(route('task.show'));
+        session()->flash('success', 'created new task successfully!');
+        return redirect()->route('task.show');
     }
 
     public function updateTasks(Request $request)
     {
+        // dd($request);
         $request->validate([
             'id' => 'required',
             'title' => 'required|string|max:255',
-            'description' => 'required|email|unique:users|max:255',
+            'description' => 'required',
             'status' => 'required',
         ]);
 
-        $task = task::find($request->id);
+        $task = Task::find($request->id);
         $task->title = $request->input('title');
         $task->description = $request->input('description');
         $task->employee_id = $request->input('employee_id');
         $task->status = $request->input('status');
         $task->save();
 
-        //return to view 
+        session()->flash('success', 'updated task successfully!');
+        return redirect()->route('task.show');
+        // return redirect(route('task.show'));
     }
 
+    
     public function assignTask(Request $request)
     {
-        $task = task::find($request->id);
-        $task->employee_id = $request->input('employee_id');
-        $task->status = 'assigned';
-        $task->save();
+        $employees = Employee::all();
+        $task = Task::find($request->id);
+        return view('assign')->with('employees', $employees)->with('task', $task);   
     }
 
 
-    public function assigneeChange(Request $request)
+    public function assignTaskSubmit(Request $request)
     {
-        $task = task::find($request->id);
-        if ($task->status=='assigned') {
-            $task->employee_id = $request->input('employee_id');
+        $task = Task::find($request->id);
+        if (($task->status == 'unassigned') || ($task->status == 'assigned') ) {
+
+            $task->employee_id = $request->employee_id;
+            $task->status = 'unassigned';
+            $task->started = NULL;
+            if ($request->employee_id) {
+                $task->status = 'assigned';
+            }
             $task->save();
         }else{
-            //return error 'task is in progress'
+            $error = "can't update tasks with inprogress status";
+            session()->flash('error', 'Validation error occurred!');
+            return redirect()->back()->withErrors($error); 
         }
-        //return success message and view
+        // return redirect(route('task.show'));
+        session()->flash('success', 'assigned task successfully!');
+        return redirect()->route('task.show');
     }
 
-    public function startTask(Request $request){
-        $currentDateTime = now()->format('Y-m-d H:i:s');
-        $task = task::find($request->id);
-        $task->status = 'inprogress';
-        $task->started = $currentDateTime;
+    public function taskStatus(Request $request)
+    {
+        $task = Task::find($request->id);
+        return view('status')->with('task', $task);   
+    }
+ 
+
+    public function statusTaskSubmit(Request $request){
+        // $currentDateTime = now()->format('Y-m-d H:i:s');
+        $currentDate = Carbon::now();
+        $task = Task::find($request->id);
+
+        if ($request->status == 'done') {
+            $started_at = $task->started;
+            // $dateObject = timestamp::createFromFormat('Y-m-d H:i:s', $started_at);
+            $date = Carbon::createFromFormat('Y-m-d H:i:s', $started_at);
+            $timeDifferenceInMinutes = $date->diffInMinutes($currentDate);
+            if (($task->status=='inprogress')&&($timeDifferenceInMinutes > 5)) {
+                $task->status = 'done';
+            }else{
+                $error = 'completion is possible only after 5 mins of in progress';
+                session()->flash('error', 'Validation error occurred!');
+                return redirect()->back()->withErrors($error); 
+            }
+        }elseif ($request->status == 'inprogress') {
+                $task->status = $request->status;
+                $task->started = $currentDate;
+        }else {
+            $task->status = $request->status;
+        }
         $task->save();
+
+        // return redirect(route('task.show'));
+        session()->flash('success', 'updated task status successfully!');
+        return redirect()->route('task.show');   
     }
 
-    public function completeTask(Request $request){
-        $currentDateTime = now()->format('Y-m-d H:i:s');
-        $task = task::find($request->id);
-        $startedTime = $task->started;
-        $timeDifferenceInMinutes = $startedTime->diffInMinutes($currentDateTime);
-        if (($task->status=='inprogress')&&($timeDifferenceInMinutes > 5)) {
-            $task->status = 'done';
-            $task->save();
-        }else{
-            //return error 'please submit the task after 5 minutes'
-        }
-        //return success
-    }
+
 }

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('description');
             $table->foreignId('employee_id')->nullable()->constrained('employees');
             $table->enum('status', ['unassigned', 'assigned', 'inprogress', 'done'])->default('unassigned');
-            $table->dateTime('started')->nullable();
+            $table->timestamp('started')->nullable();
             $table->timestamps();
         });
     }
